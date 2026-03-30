@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai2analytics"
+version = "0.1.0"
+description = "AI-powered last-mile analytics framework for pharmaceutical commercial operations"
+requires-python = ">=3.9"
+license = "MIT"
+dependencies = [
+    "pandas>=1.5",
+    "numpy>=1.23",
+    "scikit-learn>=1.2",
+    "pulp>=2.7",
+    "matplotlib>=3.6",
+    "openai>=1.0",
+]
+
+[project.optional-dependencies]
+databricks = [
+    "databricks-sdk>=0.20",
+    "pyspark>=3.4",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.4",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai2analytics"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
