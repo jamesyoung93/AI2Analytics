@@ -162,7 +162,17 @@ def load_data(
         )
         print(f"  HCP reference:    {len(data.hcp_reference):,} NPIs")
 
-    # Normalize NPI types across all loaded data to int
+    # Normalize NPI types across all loaded data to int (drop NaN/inf first)
+    def _clean_npi_col(df, col):
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+            before = len(df)
+            df.dropna(subset=[col], inplace=True)
+            df[col] = df[col].astype(int)
+            dropped = before - len(df)
+            if dropped:
+                print(f"    Dropped {dropped} rows with invalid NPI")
+
     for src_name, src_df in [
         ("hcp_weekly", data.hcp_weekly),
         ("calls", data.calls),
@@ -170,14 +180,11 @@ def load_data(
         ("team_b_align", data.team_b_align),
         ("hcp_reference", data.hcp_reference),
     ]:
-        if cfg.col_npi in src_df.columns:
-            src_df[cfg.col_npi] = src_df[cfg.col_npi].astype(int)
+        _clean_npi_col(src_df, cfg.col_npi)
     if data.portfolio_decile is not None and not data.portfolio_decile.empty:
-        if cfg.col_npi in data.portfolio_decile.columns:
-            data.portfolio_decile[cfg.col_npi] = data.portfolio_decile[cfg.col_npi].astype(int)
+        _clean_npi_col(data.portfolio_decile, cfg.col_npi)
     if data.priority_targets is not None:
-        if cfg.col_npi in data.priority_targets.columns:
-            data.priority_targets[cfg.col_npi] = data.priority_targets[cfg.col_npi].astype(int)
+        _clean_npi_col(data.priority_targets, cfg.col_npi)
 
     print("  Done.\n")
     return data
