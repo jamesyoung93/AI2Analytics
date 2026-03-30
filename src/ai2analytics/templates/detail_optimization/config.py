@@ -115,21 +115,30 @@ class DetailOptimizationConfig:
         """
         dfs = dataframes or {}
         errors = []
-        if not self.hcp_weekly_table and "hcp_weekly" not in dfs:
+
+        def _empty(val):
+            """Check if a config value is empty (works for str, None, or DataFrame)."""
+            if val is None:
+                return True
+            if isinstance(val, str):
+                return val == ""
+            return False  # DataFrame or other non-empty object
+
+        if _empty(self.hcp_weekly_table) and "hcp_weekly" not in dfs:
             errors.append("hcp_weekly_table is required (or pass dataframes={'hcp_weekly': df})")
-        if not self.calls_table and "calls" not in dfs:
+        if _empty(self.calls_table) and "calls" not in dfs:
             errors.append("calls_table is required (or pass dataframes={'calls': df})")
-        if not self.team_a_align_path and "team_a_align" not in dfs:
+        if _empty(self.team_a_align_path) and "team_a_align" not in dfs:
             errors.append("team_a_align_path is required (or pass dataframes={'team_a_align': df})")
-        if not self.team_b_align_path and "team_b_align" not in dfs:
+        if _empty(self.team_b_align_path) and "team_b_align" not in dfs:
             errors.append("team_b_align_path is required (or pass dataframes={'team_b_align': df})")
-        if not self.hcp_reference_path and "hcp_reference" not in dfs:
+        if _empty(self.hcp_reference_path) and "hcp_reference" not in dfs:
             errors.append("hcp_reference_path is required (or pass dataframes={'hcp_reference': df})")
         if self.target_horizon_weeks < 1:
             errors.append("target_horizon_weeks must be >= 1")
         if not self.scenario_range:
             errors.append("scenario_range must not be empty")
-        if not self.output_table and not self.output_csv:
+        if _empty(self.output_table) and _empty(self.output_csv):
             errors.append("At least one of output_table or output_csv is required")
         return errors
 

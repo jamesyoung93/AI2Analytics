@@ -109,7 +109,7 @@ def load_data(
             .agg({cfg.col_portfolio_decile: "max"})
         )
         print(f"  Portfolio decile: {len(data.portfolio_decile):,} NPIs (in-memory)")
-    elif cfg.portfolio_decile_path:
+    elif isinstance(cfg.portfolio_decile_path, str) and cfg.portfolio_decile_path:
         data.portfolio_decile = clean_npi(
             pd.read_csv(cfg.portfolio_decile_path), cfg.col_npi
         )
@@ -123,7 +123,7 @@ def load_data(
     # C6. Priority targets
     if "priority_targets" in dfs:
         pt_raw = dfs["priority_targets"].copy()
-    elif cfg.priority_target_path:
+    elif isinstance(cfg.priority_target_path, str) and cfg.priority_target_path:
         pt_raw = pd.read_csv(cfg.priority_target_path)
     else:
         pt_raw = None
