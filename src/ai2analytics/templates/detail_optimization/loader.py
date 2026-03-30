@@ -165,13 +165,7 @@ def load_data(
     # Normalize NPI types across all loaded data to int (drop NaN/inf first)
     def _clean_npi_col(df, col):
         if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-            before = len(df)
-            df.dropna(subset=[col], inplace=True)
-            df[col] = df[col].astype(int)
-            dropped = before - len(df)
-            if dropped:
-                print(f"    Dropped {dropped} rows with invalid NPI")
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
 
     for src_name, src_df in [
         ("hcp_weekly", data.hcp_weekly),
