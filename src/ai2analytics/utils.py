@@ -51,8 +51,9 @@ def safe_fill(df: pd.DataFrame, cols: list[str], val: float = 0) -> pd.DataFrame
 
 
 def forward_sum(series: pd.Series, window: int = 4) -> pd.Series:
-    """Sum of current + next (window-1) values. Vectorized via reverse-rolling."""
-    return series[::-1].rolling(window, min_periods=1).sum()[::-1]
+    """Sum of current + next (window-1) values, treating NaN as 0."""
+    filled = series.fillna(0)
+    return filled[::-1].rolling(window, min_periods=1).sum()[::-1]
 
 
 def resolve_col(df: pd.DataFrame, candidates: list[str]) -> str | None:

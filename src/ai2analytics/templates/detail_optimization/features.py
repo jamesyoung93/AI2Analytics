@@ -124,7 +124,10 @@ def engineer_features(
 
     print(f"  Rolling/lag features built for: {rolling_cols}")
 
-    # D7. Forward-looking call count (used for scenario column, NOT as a predictor)
+    # D7. Forward-looking call count — this IS a feature (the treatment variable).
+    #     The model learns the call-response relationship from historical data.
+    #     Scenario scoring then varies this column to predict outcomes at each
+    #     hypothetical call level. Do NOT exclude from the feature list.
     df["TS_CALLS_next"] = (
         df.groupby(COL_NPI)["TS_CALLS"]
         .apply(lambda s: forward_sum(s, HORIZON))
@@ -159,7 +162,9 @@ def engineer_features(
 
     always_exclude = {
         COL_NPI, "ref", "target_prob", "target_cnt", "target_look",
-        "TS_CALLS", "TS_CALLS_next",
+        "TS_CALLS",
+        # NOTE: TS_CALLS_next is deliberately NOT excluded — it is the
+        # treatment variable that the model learns call-response curves from.
     }
     always_exclude.update(cfg.exclude_from_features)
 
