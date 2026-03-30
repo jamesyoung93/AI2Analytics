@@ -1,13 +1,13 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai2analytics"
 version = "0.1.0"
 description = "AI-powered last-mile analytics framework for pharmaceutical commercial operations"
 requires-python = ">=3.9"
-license = "MIT"
+license = {text = "MIT"}
 dependencies = [
     "pandas>=1.5",
     "numpy>=1.23",
@@ -28,8 +28,8 @@ dev = [
     "ruff>=0.4",
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/ai2analytics"]
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.ruff]
 line-length = 100
