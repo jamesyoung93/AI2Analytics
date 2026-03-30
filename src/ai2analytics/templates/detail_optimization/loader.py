@@ -162,5 +162,22 @@ def load_data(
         )
         print(f"  HCP reference:    {len(data.hcp_reference):,} NPIs")
 
+    # Normalize NPI types across all loaded data to int
+    for src_name, src_df in [
+        ("hcp_weekly", data.hcp_weekly),
+        ("calls", data.calls),
+        ("team_a_align", data.team_a_align),
+        ("team_b_align", data.team_b_align),
+        ("hcp_reference", data.hcp_reference),
+    ]:
+        if cfg.col_npi in src_df.columns:
+            src_df[cfg.col_npi] = src_df[cfg.col_npi].astype(int)
+    if data.portfolio_decile is not None and not data.portfolio_decile.empty:
+        if cfg.col_npi in data.portfolio_decile.columns:
+            data.portfolio_decile[cfg.col_npi] = data.portfolio_decile[cfg.col_npi].astype(int)
+    if data.priority_targets is not None:
+        if cfg.col_npi in data.priority_targets.columns:
+            data.priority_targets[cfg.col_npi] = data.priority_targets[cfg.col_npi].astype(int)
+
     print("  Done.\n")
     return data

@@ -94,6 +94,9 @@ def engineer_features(
 
     # D5. Merge weekly detail calls
     det_npi_col = resolve_npi_col(details, COL_NPI)
+    # Ensure NPI types match between tables before merge
+    df[COL_NPI] = df[COL_NPI].astype(int)
+    details[det_npi_col] = details[det_npi_col].astype(int)
     det_agg = (
         details.groupby([det_npi_col, COL_WEEK])[COL_CALL]
         .sum()
