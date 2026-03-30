@@ -81,7 +81,7 @@ def load_data(
     })
     data.team_a_align = clean_npi(raw_a, cfg.col_npi)
     data.team_a_align[cfg.col_team_a_territory] = (
-        data.team_a_align[cfg.col_team_a_territory].astype(int)
+        pd.to_numeric(data.team_a_align[cfg.col_team_a_territory], errors="coerce").fillna(0).astype(int)
     )
     print(f"  Team A align:     {data.team_a_align[cfg.col_npi].nunique():,} NPIs")
 
@@ -96,7 +96,7 @@ def load_data(
     })
     data.team_b_align = clean_npi(raw_b, cfg.col_npi)
     data.team_b_align[cfg.col_team_b_territory] = (
-        data.team_b_align[cfg.col_team_b_territory].astype(int)
+        pd.to_numeric(data.team_b_align[cfg.col_team_b_territory], errors="coerce").fillna(0).astype(int)
     )
     print(f"  Team B align:     {data.team_b_align[cfg.col_npi].nunique():,} NPIs")
 
