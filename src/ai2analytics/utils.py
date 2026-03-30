@@ -95,3 +95,52 @@ def allowed_call_pairs(
                 continue
             out.append((a, b))
     return out
+
+
+def build_hcp_reference(
+    df: pd.DataFrame,
+    col_npi: str = "npi",
+    col_referrals: str = "PAT_COUNT_REFERRED",
+    col_target_flag: str | None = "TARGET_FLAG",
+    il_rx_columns: list[str] | None = None,
+) -> pd.DataFrame:
+    """Derive an HCP reference file from HCP weekly data.
+
+    Produces a one-row-per-NPI DataFrame with WRITER_FLAG, TARGET_FLAG,
+    and any therapeutic-class Rx columns — suitable for use as the
+    hcp_reference_path input to DetailOptimizationConfig.
+
+    Args:
+        df: HCP weekly DataFrame (one row per NPI x week).
+        col_npi: NPI column name.
+        col_referrals: Referral/prescription count column name.
+        col_target_flag: Target flag column name, or None if all rows are targets.
+        il_rx_columns: Therapeutic-class Rx column names to carry forward
+                       (e.g. ["IL_17_TRX_L12M", "IL_23_TRX_L12M"]).
+                       Takes max per NPI since these are rolling snapshots.
+    """
+    ref = df.groupby(col_npi).agg(
+        total_refs=(col_referrals, "sum"),
+    ).reset_index()
+
+    ref["WRITER_FLAG"] = ref["total_refs"].gt(0).map({True: "Y", False: "N"})
+    ref.drop(columns="total_refs", inplace=True)
+
+    if col_target_flag and col_target_flag in df.columns:
+        tgt = df.groupby(col_npi)[col_target_flag].first().reset_index()
+        ref = ref.merge(tgt, on=col_npi, how="left")
+    else:
+        ref[col_target_flag or "TARGET_FLAG"] = "Y"
+
+    if il_rx_columns:
+        rx_cols = [c for c in il_rx_columns if c in df.columns]
+        if rx_cols:
+            rx = df.groupby(col_npi)[rx_cols].max().reset_index()
+            ref = ref.merge(rx, on=col_npi, how="left")
+
+    ref = ref.fillna(0)
+    print(
+        f"HCP reference built: {len(ref):,} NPIs, "
+        f"{ref['WRITER_FLAG'].eq('Y').sum():,} writers"
+    )
+    return ref
