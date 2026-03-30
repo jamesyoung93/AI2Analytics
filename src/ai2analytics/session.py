@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import traceback
 from typing import Any
 
-from ai2analytics.llm import LLMClient
+from ai2analytics.llm import LLMClient, strip_markdown_fences
 from ai2analytics.discovery.surveyor import DataSurvey, survey_tables, profile_for_llm
 from ai2analytics.discovery.profiler import deep_profile, format_deep_profile
 from ai2analytics.conversation.manager import ConversationManager, ConversationState
@@ -15,37 +16,30 @@ from ai2analytics.templates.registry import list_templates, get_template, find_t
 class AnalyticsSession:
     """AI-powered analytics session for configuring and running pipeline templates.
 
-    This is the main entry point for users. It orchestrates:
+    This is the main entry point. It orchestrates:
     1. Data discovery — survey what tables exist
     2. Template matching — which pipeline template fits
     3. Conversation — structured Q&A to fill config gaps
-    4. Code generation — adapter code for data mismatches
+    4. Adapter execution — transform data to fit template requirements
     5. Pipeline execution — run the configured pipeline
 
     Usage in Databricks notebook::
 
         from ai2analytics import AnalyticsSession
 
-        # Cell 1: Initialize
-        session = AnalyticsSession(
-            spark=spark,
-            llm_endpoint="databricks-qwen3-next-80b-a3b-instruct",
-        )
+        session = AnalyticsSession(spark=spark, llm_endpoint="your-endpoint")
 
-        # Cell 2: Discover data
-        session.discover(
-            schemas=["pharma_data"],
-            prompt="Optimize HCP call allocation for DRUG_X",
-        )
+        # Discover data and get questions
+        session.discover(schemas=["my_schema"], prompt="Optimize call allocation")
 
-        # Cell 3: Review questions and answer
-        session.show_questions()
-        session.answer({
-            "drug_name": "DRUG_X",
-            "output_csv": "/dbfs/mnt/output/drug_x_plan.csv",
-        })
+        # Answer questions
+        session.answer({"drug_name": "X", "hcp_weekly_table": "schema.table", ...})
 
-        # Cell 4: Run
+        # If data needs transformation
+        session.generate_adapter()
+        session.run_adapter()
+
+        # Run the pipeline
         results = session.run()
     """
 
@@ -69,6 +63,8 @@ class AnalyticsSession:
         self._pipeline: BaseTemplate | None = None
         self._results: Any = None
 
+    # ── Discovery ───────────────────────────────────────────────────────
+
     def discover(
         self,
         schemas: list[str],
@@ -80,7 +76,7 @@ class AnalyticsSession:
 
         Args:
             schemas: Schema names to scan for tables.
-            prompt: User's description of what they want to do.
+            prompt: What you want to do (e.g. "optimize call allocation for Brand X").
             catalog: Spark catalog name.
             template_name: Explicit template name, or auto-detect from prompt.
         """
@@ -115,7 +111,7 @@ class AnalyticsSession:
         print(f"\nUsing template: {self._template.name}")
         print(self._template.get_schema_summary())
 
-        # Analyze fit
+        # Analyze fit — LLM maps data to config fields
         print("\nAnalyzing data fit...")
         self._state = self.conversation.analyze_fit(
             self._survey, self._template, prompt
@@ -131,6 +127,15 @@ class AnalyticsSession:
         print(f"Selected template: {self._template.name}")
         print(self._template.get_schema_summary())
 
+    def profile_table(self, table_name: str, **kwargs) -> str:
+        """Run a deep profile on a specific table."""
+        profile = deep_profile(self.spark, table_name, **kwargs)
+        result = format_deep_profile(profile)
+        print(result)
+        return result
+
+    # ── Configuration ───────────────────────────────────────────────────
+
     def show_questions(self):
         """Display current configuration questions."""
         if self._state is None:
@@ -139,35 +144,27 @@ class AnalyticsSession:
         print(self.conversation.present_questions(self._state))
 
     def answer(self, answers: dict[str, Any]):
-        """Provide answers to configuration questions."""
+        """Provide answers to configuration questions.
+
+        Args:
+            answers: Dict mapping config field names to values.
+                     e.g. {"drug_name": "BRAND_X", "hcp_weekly_table": "schema.tbl"}
+        """
         if self._state is None:
             print("Run discover() first.")
             return
         self._state = self.conversation.apply_answers(self._state, answers)
         if self._state.is_complete:
-            print("All required questions answered. Ready to run.")
-            print("Call session.run() to execute the pipeline.")
-        else:
-            self.show_questions()
+            print("Ready to run. Call session.run() or session.generate_adapter() first.")
 
-    def generate_adapter(self) -> str:
-        """Generate adapter code if data needs transformation."""
-        if self._state is None or self._survey is None or self._template is None:
+    def show_config(self):
+        """Show the current config state."""
+        if self._state is None:
             print("Run discover() first.")
-            return ""
-        code = self.conversation.generate_adapter(
-            self._state, self._survey, self._template
-        )
-        print("Generated adapter code:")
-        print(code)
-        return code
-
-    def profile_table(self, table_name: str, **kwargs) -> str:
-        """Run a deep profile on a specific table."""
-        profile = deep_profile(self.spark, table_name, **kwargs)
-        result = format_deep_profile(profile)
-        print(result)
-        return result
+            return
+        print("Current config values:")
+        for k, v in sorted(self._state.config_dict.items()):
+            print(f"  {k}: {repr(v)}")
 
     def build_config(self) -> Any:
         """Build the configuration object from collected answers."""
@@ -190,11 +187,110 @@ class AnalyticsSession:
             print("Config validation issues:")
             for e in errors:
                 print(f"  - {e}")
-            print("\nUpdate with session.answer({...}) and rebuild.")
+            print("\nCall session.answer({...}) to fix, then session.build_config() again.")
         else:
             print("Config is valid.")
 
         return self._config
+
+    # ── Adapter code ────────────────────────────────────────────────────
+
+    def generate_adapter(self) -> str:
+        """Generate adapter/preprocessing code if data needs transformation.
+
+        Returns the code string. Call run_adapter() to execute it.
+        """
+        if self._state is None or self._survey is None or self._template is None:
+            print("Run discover() first.")
+            return ""
+        code = self.conversation.generate_adapter(
+            self._state, self._survey, self._template
+        )
+        print("=" * 70)
+        print("GENERATED ADAPTER CODE")
+        print("=" * 70)
+        print(code)
+        print("=" * 70)
+        print("\nReview the code above. Call session.run_adapter() to execute it.")
+        print("Or edit with: session.set_adapter_code('your code')")
+        return code
+
+    def set_adapter_code(self, code: str):
+        """Manually set or edit the adapter code."""
+        if self._state is None:
+            print("Run discover() first.")
+            return
+        self._state.adapter_code = code
+        print(f"Adapter code set ({len(code)} chars).")
+
+    def run_adapter(self, code: str | None = None, max_retries: int = 2) -> bool:
+        """Execute adapter code with spark in scope.
+
+        If execution fails, the LLM will attempt to fix the code and retry.
+
+        Args:
+            code: Code string to execute. If None, uses previously generated code.
+            max_retries: Number of LLM-assisted fix attempts on failure.
+        """
+        if code is None:
+            if self._state and self._state.adapter_code:
+                code = self._state.adapter_code
+            else:
+                print("No adapter code. Call generate_adapter() first.")
+                return False
+
+        # Validate syntax first
+        from ai2analytics.codegen.adapter import validate_adapter_code
+        warnings = validate_adapter_code(code)
+        if warnings:
+            print("Code warnings:")
+            for w in warnings:
+                print(f"  - {w}")
+
+        # Build execution namespace
+        namespace = {"spark": self.spark, "__builtins__": __builtins__}
+
+        for attempt in range(1 + max_retries):
+            try:
+                compiled = compile(code, "<adapter>", "exec")
+                exec(compiled, namespace)
+                print("Adapter executed successfully.")
+                # Store any new dataframes/views created
+                if self._state:
+                    self._state.adapter_code = code
+                return True
+            except Exception as e:
+                error_msg = traceback.format_exc()
+                if attempt < max_retries:
+                    print(f"  Attempt {attempt + 1} failed: {e}")
+                    print("  Asking LLM to fix...")
+                    code = self._fix_adapter_code(code, error_msg)
+                    print("  Retrying with corrected code...")
+                else:
+                    print(f"  Adapter failed after {1 + max_retries} attempts:")
+                    print(f"  {error_msg}")
+                    print("\n  Edit manually with session.set_adapter_code() and retry.")
+                    return False
+
+    def _fix_adapter_code(self, code: str, error: str) -> str:
+        """Ask the LLM to fix adapter code given an error."""
+        system = (
+            "You are a data engineering expert. The following Python/PySpark code "
+            "failed with an error. Fix the code and return ONLY the corrected "
+            "executable Python code. Do not explain — just output the fixed code."
+        )
+        user = (
+            f"CODE:\n```python\n{code}\n```\n\n"
+            f"ERROR:\n{error}\n\n"
+            "Fix the error and return the corrected code."
+        )
+        raw = self.llm.call(system, user, temperature=0.1)
+        fixed = strip_markdown_fences(raw)
+        if self._state:
+            self._state.adapter_code = fixed
+        return fixed
+
+    # ── Pipeline execution ──────────────────────────────────────────────
 
     def run(self, config: Any = None) -> Any:
         """Run the pipeline with the current or provided config.
@@ -223,13 +319,11 @@ class AnalyticsSession:
             from ai2analytics.templates.detail_optimization import (
                 DetailOptimizationConfig, DetailOptimizationPipeline,
             )
-
             cfg = DetailOptimizationConfig(drug_name="X", ...)
             pipeline = DetailOptimizationPipeline()
             results = pipeline.run(cfg, spark=spark)
         """
         if self._template is None:
-            # Try to infer template from config type
             import ai2analytics.templates.detail_optimization as do
             if isinstance(config, do.DetailOptimizationConfig):
                 self._template = do.DetailOptimizationPipeline
