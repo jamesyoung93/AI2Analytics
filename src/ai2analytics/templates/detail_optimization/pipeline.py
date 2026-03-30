@@ -186,9 +186,20 @@ class DetailOptimizationPipeline(BaseTemplate):
         self,
         cfg: DetailOptimizationConfig,
         spark: Any = None,
+        dataframes: dict[str, Any] | None = None,
     ) -> PipelineOutput:
-        """Run the full pipeline end-to-end."""
-        errors = cfg.validate()
+        """Run the full pipeline end-to-end.
+
+        Args:
+            cfg: Pipeline configuration.
+            spark: PySpark SparkSession (required for Spark table reads).
+            dataframes: Optional dict of in-memory pandas DataFrames to use
+                        instead of reading from files/tables. Keys:
+                        "hcp_weekly", "calls", "team_a_align", "team_b_align",
+                        "portfolio_decile", "priority_targets", "hcp_reference".
+                        Any key present skips the corresponding file/table read.
+        """
+        errors = cfg.validate(dataframes=dataframes)
         if errors:
             raise ValueError(f"Config validation failed:\n  " + "\n  ".join(errors))
 
@@ -197,7 +208,7 @@ class DetailOptimizationPipeline(BaseTemplate):
         print("=" * 70 + "\n")
 
         # C. Load data
-        self._data = load_data(cfg, spark=spark)
+        self._data = load_data(cfg, spark=spark, dataframes=dataframes)
 
         # D. Feature engineering
         self._features = engineer_features(cfg, self._data)

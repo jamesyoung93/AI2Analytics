@@ -106,19 +106,25 @@ class DetailOptimizationConfig:
     output_table: str = ""
     output_csv: str = ""
 
-    def validate(self) -> list[str]:
-        """Return a list of validation errors (empty if valid)."""
+    def validate(self, dataframes: dict | None = None) -> list[str]:
+        """Return a list of validation errors (empty if valid).
+
+        Args:
+            dataframes: If provided, skip path validation for keys that have
+                        in-memory DataFrames (e.g. {"hcp_reference": df}).
+        """
+        dfs = dataframes or {}
         errors = []
-        if not self.hcp_weekly_table:
-            errors.append("hcp_weekly_table is required")
-        if not self.calls_table:
-            errors.append("calls_table is required")
-        if not self.team_a_align_path:
-            errors.append("team_a_align_path is required")
-        if not self.team_b_align_path:
-            errors.append("team_b_align_path is required")
-        if not self.hcp_reference_path:
-            errors.append("hcp_reference_path is required")
+        if not self.hcp_weekly_table and "hcp_weekly" not in dfs:
+            errors.append("hcp_weekly_table is required (or pass dataframes={'hcp_weekly': df})")
+        if not self.calls_table and "calls" not in dfs:
+            errors.append("calls_table is required (or pass dataframes={'calls': df})")
+        if not self.team_a_align_path and "team_a_align" not in dfs:
+            errors.append("team_a_align_path is required (or pass dataframes={'team_a_align': df})")
+        if not self.team_b_align_path and "team_b_align" not in dfs:
+            errors.append("team_b_align_path is required (or pass dataframes={'team_b_align': df})")
+        if not self.hcp_reference_path and "hcp_reference" not in dfs:
+            errors.append("hcp_reference_path is required (or pass dataframes={'hcp_reference': df})")
         if self.target_horizon_weeks < 1:
             errors.append("target_horizon_weeks must be >= 1")
         if not self.scenario_range:
