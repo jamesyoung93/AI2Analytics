@@ -10,7 +10,7 @@ def clean_npi(df: pd.DataFrame, col: str = "npi") -> pd.DataFrame:
     """Remove rows where NPI is '-' or missing, cast to int."""
     df = df[df[col].astype(str).str.strip() != "-"].copy()
     df = df[df[col].notna()].copy()
-    df[col] = df[col].apply(lambda x: int(float(x)))
+    df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
     return df
 
 
