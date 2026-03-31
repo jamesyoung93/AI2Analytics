@@ -22,6 +22,12 @@ env/
 *.swp
 *.swo
 
+# Generated data
+demos/data/
+
+# Knowledge store local files
+.ai2analytics/
+
 # OS
 .DS_Store
 Thumbs.db

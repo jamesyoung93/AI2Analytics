@@ -45,8 +45,9 @@ class ConversationManager:
     5. If data needs transformation, generate adapter code
     """
 
-    def __init__(self, llm: LLMClient):
+    def __init__(self, llm: LLMClient, retriever: Any = None):
         self.llm = llm
+        self.retriever = retriever  # KnowledgeRetriever, optional
 
     def analyze_fit(
         self,
@@ -87,11 +88,24 @@ class ConversationManager:
             "}"
         )
 
+        # Retrieve past knowledge if available
+        knowledge_block = ""
+        if self.retriever is not None:
+            try:
+                knowledge_block = self.retriever.retrieve_for_analysis(
+                    template.name, survey
+                )
+                if knowledge_block:
+                    knowledge_block = f"PAST EXPERIENCE:\n{knowledge_block}\n\n"
+            except Exception:
+                pass
+
         user = (
             f"USER INTENT: {user_prompt}\n\n"
             f"TEMPLATE DATA REQUIREMENTS:\n{schema_summary}\n\n"
             f"CONFIG FIELDS (use these exact names):\n{config_summary}\n\n"
             f"AVAILABLE DATA:\n{data_summary}\n\n"
+            f"{knowledge_block}"
             "Match the available data to the template requirements. "
             "For each table and column you can confidently map, put the value "
             "in auto_config using the exact config field name. "
@@ -230,11 +244,24 @@ class ConversationManager:
             "Output ONLY executable Python code with comments."
         )
 
+        # Retrieve past adapter knowledge if available
+        adapter_knowledge = ""
+        if self.retriever is not None:
+            try:
+                adapter_knowledge = self.retriever.retrieve_for_adapter(
+                    template.name, survey
+                )
+                if adapter_knowledge:
+                    adapter_knowledge = f"PAST ADAPTER EXAMPLES:\n{adapter_knowledge}\n\n"
+            except Exception:
+                pass
+
         user = (
             f"TEMPLATE REQUIREMENTS:\n{schema_summary}\n\n"
             f"CONFIG FIELDS:\n{config_summary}\n\n"
             f"AVAILABLE DATA:\n{data_summary}\n\n"
             f"CURRENT CONFIG:\n{state.config_dict}\n\n"
+            f"{adapter_knowledge}"
             "Generate adapter code. If no transformation is needed, "
             "output a comment saying so."
         )

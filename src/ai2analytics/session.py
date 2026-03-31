@@ -9,6 +9,9 @@ from ai2analytics.llm import LLMClient, strip_markdown_fences
 from ai2analytics.discovery.surveyor import DataSurvey, survey_tables, profile_for_llm
 from ai2analytics.discovery.profiler import deep_profile, format_deep_profile
 from ai2analytics.conversation.manager import ConversationManager, ConversationState
+from ai2analytics.knowledge.decision_store import DecisionStore
+from ai2analytics.knowledge.context_store import ContextStore
+from ai2analytics.knowledge.retrieval import KnowledgeRetriever
 from ai2analytics.templates.base import BaseTemplate
 from ai2analytics.templates.registry import list_templates, get_template, find_template
 
@@ -48,13 +51,42 @@ class AnalyticsSession:
         spark: Any = None,
         llm_endpoint: str = "databricks-qwen3-next-80b-a3b-instruct",
         llm_client: Any = None,
+        decision_store: DecisionStore | None = None,
+        context_store: ContextStore | None = None,
+        knowledge_backend: str = "json",
+        knowledge_path: str = ".ai2analytics",
     ):
         self.spark = spark
         self.llm = LLMClient(
             endpoint=llm_endpoint,
             openai_client=llm_client,
         )
-        self.conversation = ConversationManager(self.llm)
+
+        # Knowledge stores
+        if decision_store is not None:
+            self._decision_store = decision_store
+        else:
+            self._decision_store = DecisionStore(
+                backend=knowledge_backend,
+                json_path=f"{knowledge_path}/decisions.jsonl",
+                spark=spark,
+            )
+
+        if context_store is not None:
+            self._context_store = context_store
+        else:
+            self._context_store = ContextStore(
+                backend=knowledge_backend,
+                json_path=f"{knowledge_path}/context.jsonl",
+                spark=spark,
+            )
+
+        self._retriever = KnowledgeRetriever(
+            decision_store=self._decision_store,
+            context_store=self._context_store,
+        )
+
+        self.conversation = ConversationManager(self.llm, retriever=self._retriever)
 
         self._survey: DataSurvey | None = None
         self._template: type[BaseTemplate] | None = None
@@ -62,6 +94,7 @@ class AnalyticsSession:
         self._config: Any = None
         self._pipeline: BaseTemplate | None = None
         self._results: Any = None
+        self._last_run_id: str | None = None
 
     # ── Discovery ───────────────────────────────────────────────────────
 
@@ -86,6 +119,8 @@ class AnalyticsSession:
 
         # Import templates to trigger registration
         import ai2analytics.templates.detail_optimization  # noqa: F401
+        import ai2analytics.templates.segmentation  # noqa: F401
+        import ai2analytics.templates.market_mix  # noqa: F401
 
         # Survey tables
         print("\nScanning tables...")
@@ -309,7 +344,38 @@ class AnalyticsSession:
 
         self._pipeline = self._template()
         self._results = self._pipeline.run(config, spark=self.spark)
+
+        # Auto-log decision
+        if self._decision_store is not None:
+            try:
+                self._last_run_id = self._decision_store.log_from_session(
+                    template_name=self._template.name,
+                    config_dict=self._state.config_dict if self._state else {},
+                    survey=self._survey,
+                    state=self._state,
+                    results=self._results,
+                )
+                print(f"  Decision logged: {self._last_run_id}")
+            except Exception as e:
+                print(f"  WARNING: Could not log decision: {e}")
+
         return self._results
+
+    def annotate(self, notes: str, tags: dict[str, str] | None = None):
+        """Add post-run notes and tags to the most recent decision record."""
+        if self._last_run_id is None:
+            print("No run to annotate. Call session.run() first.")
+            return
+        decisions = self._decision_store.query(limit=50)
+        for d in decisions:
+            if d.run_id == self._last_run_id:
+                d.outcome_notes = notes
+                if tags:
+                    d.tags.update(tags)
+                self._decision_store.log(d)
+                print(f"  Annotated run {self._last_run_id}")
+                return
+        print(f"  Could not find run {self._last_run_id}")
 
     def run_direct(self, config: Any) -> Any:
         """Run a pipeline directly with a pre-built config, skipping discovery.
