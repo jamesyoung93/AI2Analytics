@@ -1,0 +1,68 @@
+---
+title: "AI2Analytics Quickstart (R)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{AI2Analytics Quickstart (R)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height = 4)
+```
+
+The smallest end-to-end example: synthetic HCP data → segmentation → cluster
+profiles → diagnostic plot.
+
+```{r}
+library(ai2analytics)
+```
+
+## 1. Generate synthetic HCP data
+
+5,000 fake providers with two prescribing-volume features. Bundled with the
+package -- no downloads, no PII.
+
+```{r}
+tables <- generate_us_hcp(seed = 42L)
+hcps   <- tables$hcp_reference
+head(hcps)
+```
+
+## 2. Run the segmentation pipeline
+
+```{r}
+cfg <- SegmentationConfig(
+  analysis_name   = "quickstart",
+  col_entity_id   = "npi",
+  feature_columns = c("IL_17_TRX_L12M", "IL_23_TRX_L12M"),
+  n_segments      = 4
+)
+
+pipe <- SegmentationPipeline$new()
+out  <- pipe$run(cfg, dataframes = list(entity_data = hcps))
+```
+
+## 3. Inspect the segments
+
+```{r}
+out$profiles
+out$summary_stats[c("n_entities", "n_segments", "method", "silhouette_score")]
+```
+
+## 4. Diagnostic plot
+
+```{r}
+pipe$dashboard()
+```
+
+## What just happened
+
+| Step | What it did |
+|---|---|
+| `generate_us_hcp()`              | Built a realistic HCP reference table (no PII). |
+| `SegmentationConfig(...)`        | Declared which column is the entity ID and which are the features. |
+| `SegmentationPipeline$new()$run(...)` | Normalised features, fitted KMeans, attached labels, computed silhouette, optionally wrote a CSV. |
+
+Next: `01_one_template_three_regions.Rmd` shows the same pipeline reused
+across US, EU, and BRIC schemas.

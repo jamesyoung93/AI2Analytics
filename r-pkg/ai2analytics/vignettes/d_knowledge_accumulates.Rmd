@@ -1,0 +1,149 @@
+---
+title: "Knowledge that Accumulates: Multi-Quarter Rollout (R)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Knowledge that Accumulates: Multi-Quarter Rollout (R)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7)
+```
+
+The `ai2analytics` knowledge module logs every pipeline run and lets you
+synthesise patterns across runs. We simulate four quarterly rollouts and show
+how the retriever surfaces what would otherwise be tribal knowledge.
+
+```{r}
+library(ai2analytics)
+```
+
+## 1. Spin up an in-memory knowledge store
+
+```{r}
+tmpdir <- tempfile("knowledge_demo_"); dir.create(tmpdir)
+decisions <- DecisionStore$new(file.path(tmpdir, "decisions.jsonl"))
+context   <- ContextStore$new(file.path(tmpdir, "context.jsonl"))
+tmpdir
+```
+
+## 2. Run four pipelines and log each one
+
+```{r}
+run_and_log <- function(label, region, dfs_key, cfg, df, tags) {
+  out <- SegmentationPipeline$new()$run(cfg, dataframes = list(entity_data = df))
+  rid <- decisions$log(decision_record(
+    template_name = "segmentation",
+    config_dict = list(
+      analysis_name   = cfg$analysis_name,
+      col_entity_id   = cfg$col_entity_id,
+      feature_columns = as.list(cfg$feature_columns),
+      method          = cfg$method,
+      n_segments      = cfg$n_segments
+    ),
+    data_profile    = sprintf("%s %s, %d rows", region, dfs_key, nrow(df)),
+    outcome_notes   = sprintf("Completed; %s.", out$summary_stats$method),
+    outcome_metrics = list(
+      silhouette_score = out$summary_stats$silhouette_score,
+      n_entities       = out$summary_stats$n_entities,
+      n_segments       = out$summary_stats$n_segments
+    ),
+    tags = tags
+  ))
+  cat(sprintf("  [%s]  silhouette=%.3f  run_id=%s\n",
+              label, out$summary_stats$silhouette_score, rid))
+  invisible(rid)
+}
+
+us_q3 <- generate_us_hcp(seed = 42L)
+run_and_log("US Q3", "US", "hcp_reference",
+  SegmentationConfig(analysis_name = "us_hcp_q3", col_entity_id = "npi",
+    feature_columns = c("IL_17_TRX_L12M", "IL_23_TRX_L12M"),
+    n_segments = 4, method = "kmeans"),
+  us_q3$hcp_reference, tags = c("us", "hcp", "q3-2025"))
+
+eu_q3 <- generate_eu_account(seed = 43L)
+run_and_log("EU Q3", "EU", "account_reference",
+  SegmentationConfig(analysis_name = "eu_account_q3", col_entity_id = "PRESCRIBER_ID",
+    feature_columns = c("UNITS_SOLD_L12M", "TIER"),
+    n_segments = 3, method = "auto"),
+  eu_q3$account_reference, tags = c("eu", "account", "q3-2025"))
+
+us_q4 <- generate_us_hcp(seed = 142L)
+run_and_log("US Q4", "US", "hcp_reference",
+  SegmentationConfig(analysis_name = "us_hcp_q4", col_entity_id = "npi",
+    feature_columns = c("IL_17_TRX_L12M", "IL_23_TRX_L12M"),
+    n_segments = 4, method = "kmeans"),
+  us_q4$hcp_reference, tags = c("us", "hcp", "q4-2025"))
+
+br_q4 <- generate_bric(seed = 44L)
+qsum <- aggregate(REVENUE_LOCAL ~ ACCOUNT_ID, br_q4$quarterly_performance, sum)
+names(qsum)[2] <- "REVENUE_L12M"
+br_view <- merge(br_q4$account_master, qsum, by = "ACCOUNT_ID", all.x = TRUE)
+br_view$REVENUE_L12M[is.na(br_view$REVENUE_L12M)] <- 0
+run_and_log("BRIC Q4", "BRIC", "account_master",
+  SegmentationConfig(analysis_name = "bric_q4", col_entity_id = "ACCOUNT_ID",
+    feature_columns = "REVENUE_L12M",
+    n_segments = 4, method = "auto"),
+  br_view, tags = c("bric", "account", "q4-2025"))
+```
+
+## 3. Curate context entries
+
+```{r}
+context$add(context_entry(
+  scope = list(region = "us"), category = "column_mapping",
+  title = "US HCP tables use 'npi' (10-digit int) as entity ID",
+  content = "Always present; lowercase. Map col_entity_id='npi'.",
+  template_name = "segmentation", confidence = 0.95
+))
+context$add(context_entry(
+  scope = list(region = "eu"), category = "column_mapping",
+  title = "EU account tables use PRESCRIBER_ID (ACC-XXXXX)",
+  content = "String identifier. Map col_entity_id='PRESCRIBER_ID'.",
+  template_name = "segmentation", confidence = 0.92
+))
+context$add(context_entry(
+  scope = list(region = "bric"), category = "adapter_pattern",
+  title = "BRIC quarterly_performance must be aggregated to one row per ACCOUNT_ID",
+  content = "Sum REVENUE_LOCAL by ACCOUNT_ID before clustering.",
+  template_name = "segmentation", confidence = 0.85
+))
+context$add(context_entry(
+  scope = list(), category = "config_preference",
+  title = "method='auto' often outperforms fixed kmeans on EU/BRIC",
+  content = "When you do not have a strong prior, let the pipeline choose between kmeans and hierarchical via silhouette.",
+  template_name = "segmentation", confidence = 0.78
+))
+```
+
+## 4. Retriever output for a *new* US run
+
+```{r}
+ret <- KnowledgeRetriever$new(decision_store = decisions, context_store = context,
+                              max_decisions = 5L, max_context = 5L)
+cat(ret$retrieve_for_analysis(template_name = "segmentation",
+                              scope = list(region = "us")))
+```
+
+## 5. Same retriever scoped to BRIC
+
+Notice that the BRIC scope brings up the aggregation adapter pattern.
+
+```{r}
+cat(ret$retrieve_for_analysis(template_name = "segmentation",
+                              scope = list(region = "bric")))
+```
+
+## What this enables
+
+- New analysts inherit every prior config decision via `KnowledgeRetriever`,
+  not via tribal knowledge.
+- Region-scoped queries surface the right conventions for any team picking up
+  a new brand.
+- Past auto-detected fields shorten the conversation an LLM session needs to
+  have on each new dataset.
+
+The decision/context stores live in `R/knowledge.R`. Both are JSONL on disk;
+swap to a Spark or Postgres backend at the application layer if needed.

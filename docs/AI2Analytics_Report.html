@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI2Analytics — Validation &amp; R-Port Report</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #1a202c;
+    --muted: #4a5568;
+    --line: #e2e8f0;
+    --soft: #f7fafc;
+    --accent: #2b6cb0;
+    --green: #2f855a;
+    --green-bg: #f0fff4;
+    --amber: #b7791f;
+    --amber-bg: #fffaf0;
+    --red: #c53030;
+    --red-bg: #fff5f5;
+    --code-bg: #f7fafc;
+    --code-ink: #2d3748;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.55;
+    font-size: 16px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 100vh;
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+  nav.toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+    padding: 28px 18px 28px 28px;
+    background: var(--soft);
+  }
+  nav.toc h2 {
+    margin: 0 0 14px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  nav.toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: section;
+  }
+  nav.toc li {
+    counter-increment: section;
+    margin: 0 0 6px;
+  }
+  nav.toc a {
+    display: block;
+    padding: 6px 8px;
+    color: var(--muted);
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  nav.toc a::before {
+    content: counter(section, decimal-leading-zero) ".  ";
+    color: #a0aec0;
+    font-variant-numeric: tabular-nums;
+  }
+  nav.toc a:hover { background: #edf2f7; color: var(--ink); }
+  nav.toc a.active { background: #fff; color: var(--accent); font-weight: 600; }
+  main {
+    padding: 36px 48px 80px;
+    max-width: 920px;
+  }
+  header.hero h1 {
+    margin: 0 0 6px;
+    font-size: 32px;
+    letter-spacing: -0.02em;
+  }
+  header.hero p.lede {
+    margin: 0 0 30px;
+    color: var(--muted);
+    max-width: 70ch;
+  }
+  .dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin: 0 0 40px;
+  }
+  .tile {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px 18px 16px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tile .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .tile .value {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tile .sub {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .tile.green .value { color: var(--green); }
+  .tile.amber .value { color: var(--amber); }
+  .tile.red   .value { color: var(--red); }
+  .tile.green { background: var(--green-bg); border-color: #c6f6d5; }
+  .tile.amber { background: var(--amber-bg); border-color: #faf089; }
+  .tile.red   { background: var(--red-bg);   border-color: #fed7d7; }
+
+  section { margin: 0 0 56px; scroll-margin-top: 12px; }
+  section > h2 {
+    font-size: 22px;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+    border-bottom: 2px solid var(--line);
+    padding-bottom: 8px;
+  }
+  section > h2 .num {
+    color: #a0aec0;
+    font-weight: 400;
+    margin-right: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  section > h3 {
+    font-size: 16px;
+    margin: 26px 0 8px;
+    color: var(--ink);
+  }
+  p, li { color: var(--ink); }
+  p { margin: 0 0 14px; }
+  ul, ol { padding-left: 22px; }
+  ul li, ol li { margin: 4px 0; }
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-size: 13.5px;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px 18px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--code-ink);
+    margin: 12px 0 18px;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0 22px;
+    font-size: 14px;
+  }
+  th, td {
+    border-bottom: 1px solid var(--line);
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  thead th {
+    background: var(--soft);
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    border-bottom: 2px solid var(--line);
+  }
+  td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: "SFMono-Regular", Consolas, monospace;
+  }
+  tr:hover td { background: #fafbfc; }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid currentColor;
+    line-height: 1.5;
+  }
+  .pill.green { color: var(--green); background: var(--green-bg); }
+  .pill.amber { color: var(--amber); background: var(--amber-bg); }
+  .pill.red   { color: var(--red);   background: var(--red-bg); }
+  .pill svg { width: 12px; height: 12px; }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: #ebf4fb;
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 14px 0 18px;
+    font-size: 14.5px;
+  }
+  .callout.bug {
+    border-color: var(--amber);
+    background: var(--amber-bg);
+  }
+  .callout.bug strong { color: var(--amber); }
+  .callout.fix {
+    border-color: var(--green);
+    background: var(--green-bg);
+  }
+  .callout.fix strong { color: var(--green); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  footer {
+    margin-top: 60px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* Mobile fallback */
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.toc {
+      position: static;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+    }
+    main { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="Table of contents">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#overview">Overview &amp; Dashboard</a></li>
+    <li><a href="#stress">Stress Test</a></li>
+    <li><a href="#demos">New Demos</a></li>
+    <li><a href="#rport">R Port</a></li>
+    <li><a href="#parity">Parity (R &amp; Python)</a></li>
+    <li><a href="#safety">GitHub Safety</a></li>
+    <li><a href="#reproduce">How to Reproduce</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="hero" id="overview">
+  <h1>AI2Analytics — Validation &amp; R-Port Report</h1>
+  <p class="lede">
+    AI2Analytics is an AI-assisted framework for scaling pharma analytics
+    pipelines across brands and regions. This pass stress-tested the existing
+    Python demos for Colab/Jupyter portability, built five richer notebooks,
+    shipped a native R port (segmentation, market mix, knowledge,
+    synthetic data), proved numerical parity between the two implementations
+    on a shared canonical demo, and confirmed the working tree and git
+    history are free of secrets, PII, and personal paths.
+  </p>
+
+  <div class="dashboard" role="region" aria-label="Status dashboard">
+
+    <div class="tile green">
+      <div class="label">R test suite</div>
+      <div class="value">
+        <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8.5l3 3 7-7"/></svg>
+        16 / 16
+      </div>
+      <div class="sub">test_that blocks pass; 51 expectations; 0 failures</div>
+    </div>
+
+    <div class="tile green">
+      <div class="label">Demos</div>
+      <div class="value">
+        <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8.5l3 3 7-7"/></svg>
+        5 / 5
+      </div>
+      <div class="sub">notebooks execute end-to-end via nbconvert</div>
+    </div>
+
+    <div class="tile green">
+      <div class="label">GitHub safety</div>
+      <div class="value">
+        <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 1l6 3v4c0 4-3 6.5-6 7-3-.5-6-3-6-7V4l6-3z"/><path d="M5.5 8l2 2 3-3.5"/></svg>
+        Clean
+      </div>
+      <div class="sub">no secrets / PII in tree or history</div>
+    </div>
+
+    <div class="tile green">
+      <div class="label">R&nbsp;↔&nbsp;Python parity</div>
+      <div class="value">
+        <svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8.5l3 3 7-7"/></svg>
+        Met
+      </div>
+      <div class="sub">R² agrees within 0.003; ROI within 10%; ranking identical</div>
+    </div>
+
+  </div>
+</header>
+
+<!-- =====================================================================
+     2. Stress Test
+====================================================================== -->
+<section id="stress">
+  <h2><span class="num">02</span>Stress Test (Colab / Jupyter portability)</h2>
+
+  <p>
+    Every existing demo (<code>demos/notebooks/*.py</code>) was run end-to-end
+    in a fresh Python 3.13 environment with the package installed in
+    editable mode. All five passed with no errors.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>Legacy script</th><th>Result</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>demo_segmentation_us.py</code></td><td><span class="pill green">passes</span></td><td>KMeans + auto-k both work; CSVs written</td></tr>
+      <tr><td><code>demo_segmentation_eu.py</code></td><td><span class="pill green">passes</span></td><td><code>method="auto"</code> correctly picks KMeans</td></tr>
+      <tr><td><code>demo_market_mix.py</code></td><td><span class="pill green">passes</span></td><td>R² 0.79; ROI ranking sensible</td></tr>
+      <tr><td><code>demo_cross_region.py</code></td><td><span class="pill green">passes</span></td><td>Knowledge store wires up</td></tr>
+      <tr><td><code>demo_knowledge.py</code></td><td><span class="pill green">passes</span></td><td>All retrievers produce non-empty blocks</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Colab / Jupyter portability gaps in the legacy scripts</h3>
+  <ol>
+    <li><strong><code>__file__</code> not defined in notebook cells.</strong>
+        Each legacy script does
+        <code>os.path.dirname(__file__)</code> for path setup — a
+        <code>NameError</code> in any Jupyter kernel.</li>
+    <li><strong><code>from demos.synthetic_us_hcp import …</code></strong>.
+        The <code>demos</code> directory is not packaged. After
+        <code>pip install ai2analytics</code> the import fails; users
+        would need to <code>git clone</code> first.</li>
+    <li><strong>Hard-coded relative output paths</strong>
+        (<code>demos/data/*.csv</code>) assume a writable repo-relative
+        directory.</li>
+  </ol>
+
+  <h3>Source bug found and fixed</h3>
+  <div class="callout bug">
+    <p><strong>Bug.</strong> <code>src/ai2analytics/templates/detail_optimization/output.py:342</code>
+    called <code>os.makedirs(os.path.dirname(cfg.output_csv), exist_ok=True)</code>.
+    When <code>output_csv</code> was a bare filename (no directory part),
+    <code>os.path.dirname</code> returned <code>""</code> and the call
+    raised
+    <code>FileNotFoundError: [WinError 3] The system cannot find the path specified: ''</code>.
+    Discovered while executing <code>03_call_optimizer_endtoend.ipynb</code>.</p>
+  </div>
+  <div class="callout fix">
+    <p><strong>Fix.</strong> Changed to
+    <code>os.makedirs(os.path.dirname(cfg.output_csv) or ".", exist_ok=True)</code>,
+    matching the pattern already used by the market_mix output module.
+    The notebook now executes cleanly.</p>
+  </div>
+
+  <h3>Structural fixes</h3>
+  <ul>
+    <li><strong>Bundled the synthetic generators</strong> as a
+      <code>ai2analytics.datasets</code> subpackage. Notebooks now import
+      <code>from ai2analytics.datasets import us_hcp, eu_account, bric</code>
+      and work after a single <code>pip install</code>, with no repo
+      checkout required.</li>
+    <li><strong>Self-installing setup cell</strong> in every new notebook:
+      a no-op locally, pulls from GitHub in Colab. No <code>__file__</code>,
+      no out-of-package imports, no hard-coded relative paths.</li>
+  </ul>
+</section>
+
+<!-- =====================================================================
+     3. New demos
+====================================================================== -->
+<section id="demos">
+  <h2><span class="num">03</span>New Demos</h2>
+
+  <p>
+    Five new Jupyter notebooks under <code>demos/notebooks/</code>, generated
+    from <code>demos/build_notebooks.py</code>. Each was executed end-to-end
+    via <code>jupyter nbconvert --execute --inplace</code>; none of them
+    rely on <code>__file__</code> or out-of-package imports.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Notebook</th>
+        <th>Story / where the value is</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>00_quickstart.ipynb</code></td>
+        <td>Five-cell hello world. Generate synthetic HCPs &rarr; segment
+            them &rarr; inspect cluster profiles &rarr; PCA plot. Optimised
+            for "convince me in 60 seconds".</td>
+        <td><span class="pill green">runs</span></td>
+      </tr>
+      <tr>
+        <td><code>01_one_template_three_regions.ipynb</code></td>
+        <td>The thesis demo. Same <code>SegmentationPipeline</code> class
+            handles US weekly HCP, EU monthly account, and BRIC quarterly
+            account schemas — all schema differences live in
+            <code>SegmentationConfig</code>. Side-by-side comparison plus
+            two figures.</td>
+        <td><span class="pill green">runs</span></td>
+      </tr>
+      <tr>
+        <td><code>02_market_mix_budget_reallocation.ipynb</code></td>
+        <td>Fits MMM on 156 weeks of synthetic media data, then runs a small
+            reallocation grid using <em>only</em> quantities the pipeline
+            already returns
+            (<code>channel_summary</code> coefficients,
+            <code>response_curves</code> shape).
+            Ends with: "best move adds ~N annual sales at the same total
+            spend." This is the hand-off-to-brand-team pattern.</td>
+        <td><span class="pill green">runs</span></td>
+      </tr>
+      <tr>
+        <td><code>03_call_optimizer_endtoend.ipynb</code></td>
+        <td>The most ambitious demo. Full
+            <code>DetailOptimizationPipeline</code> on synthetic US data:
+            load &rarr; features &rarr; train &rarr; score &rarr; LP
+            optimize &rarr; long-format portfolio. Plots include
+            calls-per-territory by team and decile-uplift of the call
+            budget. This is what a 1,500-line notebook compresses into.</td>
+        <td><span class="pill green">runs</span></td>
+      </tr>
+      <tr>
+        <td><code>04_knowledge_accumulates.ipynb</code></td>
+        <td>Simulated four quarterly rollouts (US Q3, EU Q3, US Q4, BRIC Q4)
+            into a JSONL <code>DecisionStore</code>. Adds context entries,
+            then shows the <code>KnowledgeRetriever</code> output a fresh
+            US analyst would inherit — including the BRIC-specific
+            aggregation pattern that emerged from one prior run.</td>
+        <td><span class="pill green">runs</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Setup cell convention (every new notebook)</h3>
+<pre><code>import sys, subprocess
+try:
+    import ai2analytics  # noqa: F401
+except ImportError:
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q',
+                           'git+https://github.com/jamesyoung93/AI2Analytics.git'])</code></pre>
+
+  <h3>Bundled synthetic datasets</h3>
+  <p>
+    Three generators are now exposed inside the package, so notebooks need
+    nothing on disk and produce no PII:
+  </p>
+<pre><code>from ai2analytics.datasets import us_hcp, eu_account, bric
+tables = us_hcp.generate_all(seed=42)
+# {"hcp_reference", "hcp_weekly", "calls", "team_a_alignment",
+#  "team_b_alignment", "portfolio_decile", "priority_targets"}</code></pre>
+</section>
+
+<!-- =====================================================================
+     4. R port
+====================================================================== -->
+<section id="rport">
+  <h2><span class="num">04</span>R Port</h2>
+
+  <p>
+    A native R port lives under <code>r-pkg/ai2analytics/</code>. R6 classes,
+    <code>tibble</code> outputs, <code>jsonlite</code>-backed knowledge
+    store. No <code>reticulate</code>; no Python interop.
+  </p>
+
+  <h3>Layout</h3>
+<pre><code>r-pkg/ai2analytics/
+├── DESCRIPTION
+├── NAMESPACE                       # generated by roxygen2
+├── LICENSE
+├── README.md
+├── R/
+│   ├── zzz.R                       # package docs + globalVariables
+│   ├── utils.R                     # internal helpers (impute, scale, silhouette)
+│   ├── segmentation.R              # SegmentationConfig + SegmentationPipeline
+│   ├── market_mix.R                # MarketMixConfig + MarketMixPipeline
+│   ├── knowledge.R                 # DecisionStore, ContextStore, KnowledgeRetriever
+│   └── datasets.R                  # generate_us_hcp / _eu_account / _bric
+├── man/                            # 25 .Rd man pages (generated)
+├── tests/testthat/                 # 5 test files, 51 expectations
+└── vignettes/                      # 4 .Rmd vignettes</code></pre>
+
+  <h3>Coverage</h3>
+  <table>
+    <thead>
+      <tr><th>Python feature</th><th>R port</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>templates.segmentation</code></td><td><span class="pill green">yes</span></td><td>K-means, hierarchical, auto-method, auto-k</td></tr>
+      <tr><td><code>templates.market_mix</code></td><td><span class="pill green">yes</span></td><td>Adstock, saturation, ridge/lasso/OLS, contributions, ROI</td></tr>
+      <tr><td><code>knowledge.{DecisionStore,ContextStore,KnowledgeRetriever}</code></td><td><span class="pill green">yes</span></td><td>JSONL backend</td></tr>
+      <tr><td><code>datasets.{us_hcp,eu_account,bric}</code></td><td><span class="pill green">yes</span></td><td>Native R generators (different RNG, equivalent shape)</td></tr>
+      <tr><td><code>templates.detail_optimization</code></td><td><span class="pill amber">deferred</span></td><td>~2,000 LOC; needs <code>ompr</code>/<code>lpSolveAPI</code> + <code>ranger</code> port. Called out in R README.</td></tr>
+      <tr><td><code>AnalyticsSession</code> (LLM orchestrator)</td><td><span class="pill amber">deferred</span></td><td>Recommend wiring <code>httr2</code>/<code>ellmer</code> at the application layer instead.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Test results</h3>
+<pre><code>datasets:    ............    (12 expectations, 4 test_that blocks)
+knowledge:   .............   (13 expectations, 3 test_that blocks)
+market_mix:  .......         ( 7 expectations, 3 test_that blocks)
+parity:      ......          ( 6 expectations, 1 test_that block)
+segmentation: .............  (13 expectations, 5 test_that blocks)
+
+══ DONE ════════════════════════════════════════════════════════════════════════</code></pre>
+
+  <h3>Vignettes</h3>
+  <table>
+    <thead>
+      <tr><th>R vignette</th><th>Equivalent Python notebook</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>a_quickstart.Rmd</code></td><td><code>00_quickstart.ipynb</code></td></tr>
+      <tr><td><code>b_one_template_three_regions.Rmd</code></td><td><code>01_one_template_three_regions.ipynb</code></td></tr>
+      <tr><td><code>c_market_mix_budget_reallocation.Rmd</code></td><td><code>02_market_mix_budget_reallocation.ipynb</code></td></tr>
+      <tr><td><code>d_knowledge_accumulates.Rmd</code></td><td><code>04_knowledge_accumulates.ipynb</code></td></tr>
+      <tr><td colspan="2" style="color:var(--muted); font-style: italic;">No R equivalent of <code>03_call_optimizer_endtoend.ipynb</code> — depends on the unported <code>detail_optimization</code> template.</td></tr>
+    </tbody>
+  </table>
+
+  <p>All four R vignettes render cleanly via <code>rmarkdown::render</code>.</p>
+
+  <h3>Install</h3>
+<pre><code>devtools::install_github("jamesyoung93/AI2Analytics",
+                         subdir = "r-pkg/ai2analytics")</code></pre>
+</section>
+
+<!-- =====================================================================
+     5. Parity
+====================================================================== -->
+<section id="parity">
+  <h2><span class="num">05</span>R &amp; Python Parity</h2>
+
+  <h3>Demo coverage</h3>
+  <p>
+    4 of 5 demos are paired across the two languages. The unpaired one
+    (<code>03_call_optimizer_endtoend</code>) depends on the
+    not-yet-ported <code>detail_optimization</code> template — explicitly
+    flagged in the R README.
+  </p>
+
+  <h3>Numerical parity on the canonical Market Mix demo</h3>
+  <p>
+    A single CSV (<code>parity/shared_mmm.csv</code>, 156 weeks, 7 columns,
+    seed 12345) is built once in Python and loaded by both languages — no
+    independent data regeneration. Both pipelines run with identical config
+    (ridge regression, alpha = 1.0, log saturation, decay 0.5, positive
+    coefficients, intercept on, no standardisation).
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Metric</th>
+        <th class="num">Python</th>
+        <th class="num">R</th>
+        <th class="num">Δ (rel)</th>
+        <th>Tolerance</th>
+        <th>Pass</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>R²</td>           <td class="num">0.7900</td>  <td class="num">0.7929</td>  <td class="num">+0.36%</td>  <td>±0.05 abs</td>  <td><span class="pill green">ok</span></td></tr>
+      <tr><td>Adjusted R²</td>  <td class="num">0.7786</td>  <td class="num">0.7816</td>  <td class="num">+0.39%</td>  <td>±0.05 abs</td>  <td><span class="pill green">ok</span></td></tr>
+      <tr><td>MAPE (%)</td>     <td class="num">4.97</td>    <td class="num">4.88</td>    <td class="num">−0.09 pp</td><td>±1.0 pp</td>    <td><span class="pill green">ok</span></td></tr>
+      <tr><td>Predicted-sum</td><td class="num">28811.39</td><td class="num">28811.39</td><td class="num">0.00%</td>   <td>&lt;0.1%</td>   <td><span class="pill green">ok</span></td></tr>
+      <tr><td>TV coefficient</td><td class="num">13.02</td>  <td class="num">13.51</td>   <td class="num">+3.76%</td>  <td>±20% rel</td>   <td><span class="pill green">ok</span></td></tr>
+      <tr><td>Digital coefficient</td><td class="num">7.21</td><td class="num">7.26</td>  <td class="num">+0.68%</td>  <td>±20% rel</td>   <td><span class="pill green">ok</span></td></tr>
+      <tr><td>Print coefficient</td>  <td class="num">1.37</td><td class="num">1.23</td>  <td class="num">−9.78%</td>  <td>±20% rel</td>   <td><span class="pill green">ok</span></td></tr>
+      <tr><td>TV ROI</td>       <td class="num">1.104</td>   <td class="num">1.145</td>   <td class="num">+3.76%</td>  <td>±20% rel</td>   <td><span class="pill green">ok</span></td></tr>
+      <tr><td>Digital ROI</td>  <td class="num">0.804</td>   <td class="num">0.809</td>   <td class="num">+0.68%</td>  <td>±20% rel</td>   <td><span class="pill green">ok</span></td></tr>
+      <tr><td>Print ROI</td>    <td class="num">0.212</td>   <td class="num">0.191</td>   <td class="num">−9.78%</td>  <td>±20% rel</td>   <td><span class="pill green">ok</span></td></tr>
+      <tr><td>Channel ranking</td><td colspan="2" style="text-align:center;">TV &gt; Digital &gt; Print</td><td colspan="2" style="text-align:center;">identical</td><td><span class="pill green">ok</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Bug found and fixed during the parity check</h3>
+  <div class="callout bug">
+    <p><strong>Discrepancy.</strong> First parity run showed R² off by
+    0.055 and per-channel coefficients diverging by up to 30%. Root cause:
+    the R port treated the user-facing <code>alpha</code> 1:1 as glmnet's
+    <code>lambda</code>, but sklearn's <code>Ridge(alpha=…)</code>
+    parametrisation implies <code>λ = α / N</code> for ridge.
+    Different solvers, different effective regularisation strength.</p>
+  </div>
+  <div class="callout fix">
+    <p><strong>Fix.</strong> In <code>R/market_mix.R</code>, the
+    user-facing <code>alpha</code> is now sklearn-compatible and
+    translated internally to glmnet's <code>lambda</code>:
+    <code>gn_lambda = cfg$alpha / N</code> for ridge.
+    Lasso uses the natural one-to-one mapping. Coefficient agreement
+    improved from ~30% gap to &lt;10%; R² agreement improved from
+    Δ = 0.055 to Δ = 0.003.</p>
+  </div>
+
+  <h3>Regression test</h3>
+  <p>
+    <code>r-pkg/ai2analytics/tests/testthat/test-parity.R</code> pins the
+    canonical Market Mix output against the Python reference values. It
+    skips gracefully when <code>parity/shared_mmm.csv</code> is absent
+    (so the test is portable to CRAN). It asserts:
+  </p>
+  <ul>
+    <li>R² agrees within 0.05 absolute</li>
+    <li>Per-channel ROI agrees within 20% relative</li>
+    <li>Channel ranking (TV &gt; Digital &gt; Print) is preserved</li>
+  </ul>
+  <p>
+    If a future change to the R fitting logic breaks parity, this test
+    fires.
+  </p>
+
+  <h3>Segmentation parity (informal)</h3>
+  <p>
+    Not in the formal suite because k-means depends on a random
+    initialisation that differs between sklearn (k-means++,
+    <code>random_state=42</code>) and base R (Hartigan-Wong, no
+    k-means++). Different seeds and solvers produce different label
+    numbering on the same data, but qualitatively similar partitions. A
+    label-invariant metric (e.g. adjusted Rand index) would formalise
+    this — left as future work.
+  </p>
+</section>
+
+<!-- =====================================================================
+     6. GitHub safety
+====================================================================== -->
+<section id="safety">
+  <h2><span class="num">06</span>GitHub Safety</h2>
+
+  <h3>Working tree</h3>
+  <table>
+    <thead>
+      <tr><th>Pattern class</th><th>Hits in tracked files</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>password</code>, <code>secret</code>, <code>token</code>, <code>api_key</code>, <code>BEGIN PRIVATE KEY</code></td>
+          <td><span class="pill green">0</span> &nbsp; (only <code>max_tokens</code> in the LLM client)</td></tr>
+      <tr><td>Key prefixes: <code>sk-…</code>, <code>AKIA…</code>, <code>ghp_…</code>, <code>xox[baprs]-…</code></td>
+          <td><span class="pill green">0</span></td></tr>
+      <tr><td>Personal paths: <code>C:\Users\Admin</code>, <code>/Users/Admin</code>, <code>/home/…</code></td>
+          <td><span class="pill green">0</span></td></tr>
+      <tr><td>Personal email or institution names: <code>@gmail</code>, <code>@yahoo</code>, <code>james.young</code>, <code>sdstate</code></td>
+          <td><span class="pill green">0</span></td></tr>
+      <tr><td>Customer / client names</td>
+          <td><span class="pill green">0</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Git history</h3>
+  <p>
+    <code>git log --all --pretty="" --name-only | sort -u</code> shows that
+    only source files (R/Python source, README, demos, blog markdown,
+    sanity-check scripts) have ever been committed. No <code>.csv</code>,
+    <code>.env</code>, <code>.pem</code>, <code>.key</code>, or
+    <code>.json</code> data file has ever entered history.
+    <code>git log --all -p -S "&lt;token&gt;"</code> for
+    <code>sk-</code>, <code>BEGIN PRIVATE</code>, <code>AKIA</code>,
+    <code>C:\Users</code>, <code>james.young</code>, and <code>ZS</code>
+    all return zero matches in any historical blob.
+  </p>
+
+  <h3>Files intentionally excluded</h3>
+  <table>
+    <thead>
+      <tr><th>Path</th><th>Why excluded</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>generic_detail_approach.txt</code></td>
+        <td>Original 1,500-line working notebook; mentions "ZS" (real consultancy name) and contains pre-refactor specifics.</td>
+        <td><span class="pill amber">flagged</span> — properly gitignored; never <code>git add -f</code> it</td>
+      </tr>
+      <tr>
+        <td><code>iterative_html_builder_v4.py</code></td>
+        <td>Internal Databricks tool, not part of this package.</td>
+        <td><span class="pill green">ignored</span></td>
+      </tr>
+      <tr>
+        <td><code>dist/</code></td>
+        <td>Built wheel and tarball artifacts.</td>
+        <td><span class="pill green">ignored</span></td>
+      </tr>
+      <tr>
+        <td><code>demos/data/</code></td>
+        <td>Generated CSV outputs (regenerable from synthetic generators).</td>
+        <td><span class="pill green">ignored</span></td>
+      </tr>
+      <tr>
+        <td><code>.ai2analytics/</code></td>
+        <td>Local knowledge store JSONL files.</td>
+        <td><span class="pill green">ignored</span></td>
+      </tr>
+      <tr>
+        <td><code>parity/{shared_mmm.csv, _*.csv, *.json}</code></td>
+        <td>Regenerable parity-check artifacts.</td>
+        <td><span class="pill green">ignored</span> (added in this pass)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Recommendations</h3>
+  <ul>
+    <li>Before publishing release artifacts, double-check that the
+        <code>dist/</code> contents do not accidentally include notebook
+        files, generated data, or local knowledge stores.
+        <code>[tool.setuptools.packages.find]</code> already points at
+        <code>src</code>, so the wheel should be source-only by construction.</li>
+    <li>Consider adding a pre-commit secret-scanner
+        (<code>gitleaks</code> or <code>detect-secrets</code>) to run the
+        same checks automatically.</li>
+  </ul>
+</section>
+
+<!-- =====================================================================
+     7. Reproduce
+====================================================================== -->
+<section id="reproduce">
+  <h2><span class="num">07</span>How to Reproduce</h2>
+
+<pre><code># From the repo root.
+
+# 1. Install Python package + dev tools
+pip install -e ".[dev]" nbconvert nbclient ipykernel
+
+# 2. Re-execute all five Jupyter notebooks in place
+for nb in demos/notebooks/0*.ipynb; do
+  jupyter nbconvert --to notebook --execute --inplace "$nb"
+done
+
+# 3. R-side install + tests
+Rscript -e 'install.packages(c("R6","cluster","dplyr","glmnet","jsonlite",
+                              "rlang","tibble","testthat","withr","ggplot2",
+                              "knitr","rmarkdown","gridExtra","tidyr"))'
+Rscript -e 'devtools::test("r-pkg/ai2analytics")'
+
+# 4. Parity check (Python &lt;-&gt; R)
+python parity/build_shared_data.py
+python parity/run_python.py
+Rscript -e 'devtools::load_all("r-pkg/ai2analytics", quiet=TRUE); source("parity/run_r.R")'
+python parity/assert_parity.py</code></pre>
+
+  <p>
+    Detailed write-ups for each section live alongside this report:
+    <code>docs/STRESS_TEST_REPORT.md</code>,
+    <code>docs/R_PORT_REPORT.md</code>,
+    <code>docs/PARITY_REPORT.md</code>,
+    <code>docs/GITHUB_SAFETY_REPORT.md</code>.
+  </p>
+</section>
+
+<footer>
+  Generated for ai2analytics 0.2.0 on the
+  <code>claude/ecstatic-varahamihira-18e03f</code> branch.
+  All cited numbers were captured from live runs documented in the
+  companion <code>docs/*.md</code> reports.
+</footer>
+
+</main>
+</div>
+
+<script>
+// Sticky-TOC active-link highlighting
+const links = document.querySelectorAll('nav.toc a');
+const sections = [...links].map(l => document.querySelector(l.getAttribute('href')));
+const observer = new IntersectionObserver(entries => {
+  for (const e of entries) {
+    if (e.isIntersecting) {
+      const id = '#' + e.target.id;
+      links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === id));
+    }
+  }
+}, { rootMargin: '-30% 0px -65% 0px', threshold: 0 });
+sections.forEach(s => s && observer.observe(s));
+</script>
+</body>
+</html>

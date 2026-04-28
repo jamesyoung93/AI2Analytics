@@ -33,6 +33,41 @@ cd AI2Analytics
 pip install -e ".[dev]"
 ```
 
+### R port
+
+A native R port lives in `r-pkg/ai2analytics/`. Same templates
+(`SegmentationPipeline`, `MarketMixPipeline`), same knowledge module, same
+synthetic data generators -- written in idiomatic R6.
+
+```r
+devtools::install_github("jamesyoung93/AI2Analytics",
+                         subdir = "r-pkg/ai2analytics")
+```
+
+See [`docs/R_PORT_REPORT.md`](docs/R_PORT_REPORT.md) and
+[`docs/PARITY_REPORT.md`](docs/PARITY_REPORT.md) for what's covered and
+how the two implementations agree numerically.
+
+## Demos & Notebooks
+
+Five notebooks under `demos/notebooks/` work in Colab, Jupyter, or VS Code
+out of the box (each starts with a self-installing setup cell):
+
+| Notebook | What it shows |
+|---|---|
+| `00_quickstart.ipynb` | 5-cell hello world: synthetic data → segment → plot |
+| `01_one_template_three_regions.ipynb` | Same `SegmentationPipeline` across US, EU, BRIC schemas |
+| `02_market_mix_budget_reallocation.ipynb` | Fit MMM, then simulate budget reallocations using only quantities the pipeline returns |
+| `03_call_optimizer_endtoend.ipynb` | Full `DetailOptimizationPipeline` with allocation-by-territory and decile-uplift charts |
+| `04_knowledge_accumulates.ipynb` | Multi-quarter rollout simulation; retriever output for new analysts |
+
+Synthetic data is bundled in the package:
+
+```python
+from ai2analytics.datasets import us_hcp, eu_account, bric
+tables = us_hcp.generate_all()  # no PII, deterministic with seed
+```
+
 ## Quick Start
 
 ### Direct usage (you already know your data)

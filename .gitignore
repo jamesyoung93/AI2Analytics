@@ -25,6 +25,18 @@ env/
 # Generated data
 demos/data/
 
+# Parity check artifacts (regenerable)
+parity/python_outputs.json
+parity/r_outputs.json
+parity/_*.csv
+parity/shared_mmm.csv
+
+# R artifacts
+r-pkg/ai2analytics/inst/doc/
+r-pkg/ai2analytics/.Rhistory
+r-pkg/ai2analytics/..Rcheck/
+*.Rproj.user/
+
 # Knowledge store local files
 .ai2analytics/
 

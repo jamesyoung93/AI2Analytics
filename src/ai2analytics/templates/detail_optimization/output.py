@@ -339,7 +339,7 @@ def write_output(
     # Write CSV
     if cfg.output_csv:
         import os
-        os.makedirs(os.path.dirname(cfg.output_csv), exist_ok=True)
+        os.makedirs(os.path.dirname(cfg.output_csv) or ".", exist_ok=True)
         portfolio.to_csv(cfg.output_csv, index=False)
         print(f"\n  Wrote CSV: {cfg.output_csv} ({len(portfolio):,} rows)")
 
