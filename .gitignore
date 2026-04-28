@@ -31,6 +31,9 @@ parity/r_outputs.json
 parity/_*.csv
 parity/shared_mmm.csv
 
+# Report-builder intermediate base64 image dumps (regenerable from notebooks)
+docs/_assets/*.b64
+
 # R artifacts
 r-pkg/ai2analytics/inst/doc/
 r-pkg/ai2analytics/.Rhistory
