@@ -5,8 +5,13 @@ Native R port of the [Python AI2Analytics](../../README.md) framework.
 Reusable pipeline templates for **entity segmentation** and **market mix
 modelling**, plus a JSONL-backed **knowledge store** for accumulating
 decisions across runs. Every pipeline separates analytical logic from data
-shape, so the same template handles different brands, regions, and schemas
-via configuration.
+shape, so the same template handles many similar datasets via
+configuration.
+
+> The included demos use pharmaceutical promotional data because that is
+> the domain the author works in, but the primitives are transportable
+> across consumer goods, software, retail, financial services, and any
+> other setting with panel-structured response data.
 
 ## Install
 

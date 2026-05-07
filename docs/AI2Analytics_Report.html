@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI2Analytics &mdash; A reusable analytics framework for pharma commercial teams</title>
+<title>AI2Analytics, a reusable analytics framework for repeated modelling work</title>
 <style>
   :root {
     --bg: #ffffff;
@@ -111,8 +111,15 @@
     font-size: 17px;
     color: var(--muted);
     max-width: 70ch;
-    margin: 0 0 28px;
+    margin: 0 0 18px;
     line-height: 1.6;
+  }
+  header.hero .lede.transport {
+    font-size: 15px;
+    border-left: 3px solid var(--line);
+    padding: 4px 0 4px 14px;
+    margin: 0 0 28px;
+    color: var(--ink-soft, #4a5568);
   }
   .hero-grid {
     display: grid;
@@ -423,17 +430,24 @@
      HERO
 =========================================================== -->
 <header class="hero" id="overview">
-  <span class="eyebrow">Pharma commercial analytics</span>
-  <h1>One pipeline, every brand.</h1>
+  <span class="eyebrow">Reusable analytics framework</span>
+  <h1>One pipeline, every dataset.</h1>
   <p class="lede">
-    AI2Analytics is a Python &amp; R framework for pharmaceutical
-    commercial teams who keep rebuilding the same analytical pipeline
-    &mdash; once per brand, once per region, once per data source.
-    It separates pipeline <em>logic</em> from <em>data shape</em>:
-    write the model once, configure it many times. The reference
-    templates cover HCP segmentation, market mix modelling, and
-    detail-call optimisation, with an LLM-assisted layer for
-    onboarding new datasets.
+    AI2Analytics is a Python and R framework for analysts and data
+    scientists who keep rebuilding the same analytical pipeline against
+    new data. Once per region, once per business unit, once per customer
+    segment, once per brand. It separates pipeline <em>logic</em> from
+    <em>data shape</em>, so you write the model once and configure it
+    many times. The reference templates cover entity segmentation,
+    market mix modelling, and a panel-level allocation optimiser, with
+    an optional LLM-assisted layer for onboarding new datasets.
+  </p>
+  <p class="lede transport">
+    The included demos use pharmaceutical promotional data because that
+    is the domain the author works in, but the primitives are
+    transportable across consumer goods, software, retail, financial
+    services, and any other setting with panel-structured response
+    data and a need to fit the same model to many slices of it.
   </p>
 
   <div class="hero-grid">

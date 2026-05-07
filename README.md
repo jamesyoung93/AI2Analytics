@@ -1,21 +1,23 @@
 # AI2Analytics
 
-AI-powered framework for scaling analytical pipelines across brands, regions, and data sources. Built for teams that need to deploy the same modeling approach repeatedly, but face "last-mile" data differences each time.
+A reusable framework for analytical pipelines that have to run across many similar but slightly different datasets. The same template fits a new brand, region, customer segment, or schema with configuration only, no copy-and-edit.
 
-## The Problem
+> The included demos use pharmaceutical promotional data because that is the domain the author works in, but the primitives are transportable across consumer goods, software, retail, financial services, and any other setting with panel-structured response data and a need to fit the same model to many slices of it.
 
-You have a validated analytical pipeline — say, a call allocation optimizer or a propensity scoring engine. It works for one brand. Now you need to run it for five more, each with slightly different data schemas, column names, therapeutic class variables, and reference files.
+## The problem
 
-Manually copying and editing a 1,500-line notebook for each brand is slow, error-prone, and impossible to maintain.
+You have a validated analytical pipeline. It might be a propensity model, a clustering routine, a media-mix decomposition, or a budget allocator. It works for one slice of the business. Now you need to run it for five more, each with slightly different data schemas, column names, category variables, and reference files.
 
-## The Solution
+Manually copying and editing a long notebook for each new slice is slow, error-prone, and impossible to maintain over time.
 
-AI2Analytics separates **what the pipeline does** from **what the data looks like**:
+## The solution
+
+AI2Analytics separates **what the pipeline does** from **what the data looks like**.
 
 1. **Templates** define pipeline logic as modular, reusable stages with declared data requirements
 2. **Discovery** surveys your data catalog, profiles tables, and matches them to template requirements
 3. **Conversation** uses an LLM to map discovered data to config fields, auto-filling what it can and asking structured questions about what it can't
-4. **Adapters** generate and execute preprocessing code when source data doesn't match the template schema — with automatic retry and LLM-assisted error correction
+4. **Adapters** generate and execute preprocessing code when source data does not match the template schema, with automatic retry and LLM-assisted error correction
 5. **Execution** runs the configured pipeline end-to-end
 
 ## Installation
