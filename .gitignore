@@ -31,6 +31,9 @@ parity/r_outputs.json
 parity/_*.csv
 parity/shared_mmm.csv
 
+# Internal QA / safety reports (kept locally, not published)
+docs/internal/
+
 # Report-builder intermediate base64 image dumps (regenerable from notebooks)
 docs/_assets/*.b64
 
