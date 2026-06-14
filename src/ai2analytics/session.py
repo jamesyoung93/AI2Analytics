@@ -5,15 +5,15 @@ from __future__ import annotations
 import traceback
 from typing import Any
 
-from ai2analytics.llm import LLMClient, strip_markdown_fences
-from ai2analytics.discovery.surveyor import DataSurvey, survey_tables, profile_for_llm
-from ai2analytics.discovery.profiler import deep_profile, format_deep_profile
 from ai2analytics.conversation.manager import ConversationManager, ConversationState
-from ai2analytics.knowledge.decision_store import DecisionStore
+from ai2analytics.discovery.profiler import deep_profile, format_deep_profile
+from ai2analytics.discovery.surveyor import DataSurvey, survey_tables
 from ai2analytics.knowledge.context_store import ContextStore
+from ai2analytics.knowledge.decision_store import DecisionStore
 from ai2analytics.knowledge.retrieval import KnowledgeRetriever
+from ai2analytics.llm import LLMClient, strip_markdown_fences
 from ai2analytics.templates.base import BaseTemplate
-from ai2analytics.templates.registry import list_templates, get_template, find_template
+from ai2analytics.templates.registry import find_template, get_template, list_templates
 
 
 class AnalyticsSession:
@@ -119,8 +119,9 @@ class AnalyticsSession:
 
         # Import templates to trigger registration
         import ai2analytics.templates.detail_optimization  # noqa: F401
-        import ai2analytics.templates.segmentation  # noqa: F401
+        import ai2analytics.templates.generalized  # noqa: F401
         import ai2analytics.templates.market_mix  # noqa: F401
+        import ai2analytics.templates.segmentation  # noqa: F401
 
         # Survey tables
         print("\nScanning tables...")
@@ -158,6 +159,7 @@ class AnalyticsSession:
     def select_template(self, name: str):
         """Manually select a template by name."""
         import ai2analytics.templates.detail_optimization  # noqa: F401
+        import ai2analytics.templates.generalized  # noqa: F401
         self._template = get_template(name)
         print(f"Selected template: {self._template.name}")
         print(self._template.get_schema_summary())
@@ -391,8 +393,11 @@ class AnalyticsSession:
         """
         if self._template is None:
             import ai2analytics.templates.detail_optimization as do
+            import ai2analytics.templates.generalized as gen
             if isinstance(config, do.DetailOptimizationConfig):
                 self._template = do.DetailOptimizationPipeline
+            elif isinstance(config, gen.GeneralizedDetailOptimizationConfig):
+                self._template = gen.GeneralizedDetailOptimizationPipeline
 
         if self._template is None:
             print("Could not determine template. Use session.select_template() first.")
