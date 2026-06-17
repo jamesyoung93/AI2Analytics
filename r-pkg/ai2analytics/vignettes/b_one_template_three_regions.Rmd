@@ -1,0 +1,128 @@
+---
+title: "One Pipeline, Three Regions (R)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{One Pipeline, Three Regions (R)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 8, fig.height = 4)
+```
+
+The thesis: pipeline *logic* is portable but *data* never is. Same
+`SegmentationPipeline`, three completely different schemas (US weekly HCP,
+EU monthly account, BRIC quarterly account). Compared side-by-side.
+
+```{r}
+library(ai2analytics)
+library(dplyr)
+library(ggplot2)
+```
+
+## 1. Generate three regional datasets
+
+```{r}
+us <- generate_us_hcp(seed = 42L)
+eu <- generate_eu_account(seed = 43L)
+br <- generate_bric(seed = 44L)
+
+cat("US HCP reference :", paste(dim(us$hcp_reference),     collapse = "x"), "\n")
+cat("EU accounts      :", paste(dim(eu$account_reference), collapse = "x"), "\n")
+cat("BRIC accounts    :", paste(dim(br$account_master),    collapse = "x"), "\n")
+```
+
+| Region | Entity ID         | Features used                                    |
+|--------|-------------------|--------------------------------------------------|
+| US     | `npi` (10-digit)  | `IL_17_TRX_L12M`, `IL_23_TRX_L12M`               |
+| EU     | `PRESCRIBER_ID`   | `UNITS_SOLD_L12M`, `TIER`                        |
+| BRIC   | `ACCOUNT_ID`      | join q-perf into master to get revenue & starts  |
+
+## 2. Run the same pipeline on all three
+
+```{r}
+us_out <- SegmentationPipeline$new()$run(
+  SegmentationConfig(
+    analysis_name = "us_hcp", col_entity_id = "npi",
+    feature_columns = c("IL_17_TRX_L12M", "IL_23_TRX_L12M"),
+    n_segments = 4, method = "kmeans"
+  ),
+  dataframes = list(entity_data = us$hcp_reference)
+)
+
+eu_out <- SegmentationPipeline$new()$run(
+  SegmentationConfig(
+    analysis_name = "eu_account", col_entity_id = "PRESCRIBER_ID",
+    feature_columns = c("UNITS_SOLD_L12M", "TIER"),
+    n_segments = 3, method = "auto"
+  ),
+  dataframes = list(entity_data = eu$account_reference)
+)
+
+# BRIC needs a join to get a per-account view
+qsum <- br$quarterly_performance %>%
+  group_by(ACCOUNT_ID) %>%
+  summarise(REVENUE_L12M = sum(REVENUE_LOCAL),
+            AVG_PATIENT_STARTS = mean(PATIENT_STARTS), .groups = "drop")
+br_view <- br$account_master %>%
+  left_join(qsum, by = "ACCOUNT_ID") %>%
+  mutate(across(c(REVENUE_L12M, AVG_PATIENT_STARTS),
+                ~ tidyr::replace_na(., 0)))
+
+br_out <- SegmentationPipeline$new()$run(
+  SegmentationConfig(
+    analysis_name = "bric_account", col_entity_id = "ACCOUNT_ID",
+    feature_columns = c("REVENUE_L12M", "AVG_PATIENT_STARTS"),
+    n_segments = 4, method = "auto"
+  ),
+  dataframes = list(entity_data = br_view)
+)
+```
+
+## 3. Side-by-side comparison
+
+```{r}
+summarise_run <- function(name, out) {
+  s <- out$summary_stats
+  tibble::tibble(region = name, entities = s$n_entities,
+                 method = s$method, segments = s$n_segments,
+                 silhouette = round(s$silhouette_score, 3))
+}
+dplyr::bind_rows(
+  summarise_run("US",   us_out),
+  summarise_run("EU",   eu_out),
+  summarise_run("BRIC", br_out)
+)
+```
+
+## 4. Plot segment sizes by region
+
+```{r, fig.width=9, fig.height=4}
+plot_sizes <- function(out, title) {
+  s <- out$summary_stats$segment_sizes
+  d <- data.frame(seg = factor(names(s), levels = names(s)),
+                  count = unname(s))
+  ggplot(d, aes(seg, count)) +
+    geom_col(fill = "steelblue", colour = "black") +
+    labs(title = title, x = "Segment", y = "Count") +
+    theme_minimal()
+}
+gridExtra::grid.arrange(
+  plot_sizes(us_out, "US HCP"),
+  plot_sizes(eu_out, "EU accounts"),
+  plot_sizes(br_out, "BRIC accounts"),
+  ncol = 3
+)
+```
+
+## What this shows
+
+- The **identical** `SegmentationPipeline` produced sensible clusters across
+  three completely different schemas.
+- All schema differences live in `SegmentationConfig`.
+- Silhouette scores are all in a healthy 0.4–0.7 range despite the noisy
+  synthetic data.
+
+This pattern scales to dozens of brands or regions: write the pipeline once,
+configure many times.

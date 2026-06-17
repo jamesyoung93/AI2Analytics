@@ -1,21 +1,23 @@
 # AI2Analytics
 
-AI-powered framework for scaling analytical pipelines across brands, regions, and data sources. Built for teams that need to deploy the same modeling approach repeatedly, but face "last-mile" data differences each time.
+A reusable framework for analytical pipelines that have to run across many similar but slightly different datasets. The same template fits a new brand, region, customer segment, or schema with configuration only, no copy-and-edit.
 
-## The Problem
+> The included demos use pharmaceutical promotional data because that is the domain the author works in, but the primitives are transportable across consumer goods, software, retail, financial services, and any other setting with panel-structured response data and a need to fit the same model to many slices of it.
 
-You have a validated analytical pipeline — say, a call allocation optimizer or a propensity scoring engine. It works for one brand. Now you need to run it for five more, each with slightly different data schemas, column names, therapeutic class variables, and reference files.
+## The problem
 
-Manually copying and editing a 1,500-line notebook for each brand is slow, error-prone, and impossible to maintain.
+You have a validated analytical pipeline. It might be a propensity model, a clustering routine, a media-mix decomposition, or a budget allocator. It works for one slice of the business. Now you need to run it for five more, each with slightly different data schemas, column names, category variables, and reference files.
 
-## The Solution
+Manually copying and editing a long notebook for each new slice is slow, error-prone, and impossible to maintain over time.
 
-AI2Analytics separates **what the pipeline does** from **what the data looks like**:
+## The solution
+
+AI2Analytics separates **what the pipeline does** from **what the data looks like**.
 
 1. **Templates** define pipeline logic as modular, reusable stages with declared data requirements
 2. **Discovery** surveys your data catalog, profiles tables, and matches them to template requirements
 3. **Conversation** uses an LLM to map discovered data to config fields, auto-filling what it can and asking structured questions about what it can't
-4. **Adapters** generate and execute preprocessing code when source data doesn't match the template schema — with automatic retry and LLM-assisted error correction
+4. **Adapters** generate and execute preprocessing code when source data does not match the template schema, with automatic retry and LLM-assisted error correction
 5. **Execution** runs the configured pipeline end-to-end
 
 ## Installation
@@ -31,6 +33,41 @@ pip install "ai2analytics[databricks] @ git+https://github.com/jamesyoung93/AI2A
 git clone https://github.com/jamesyoung93/AI2Analytics.git
 cd AI2Analytics
 pip install -e ".[dev]"
+```
+
+### R port
+
+A native R port lives in `r-pkg/ai2analytics/`. Same templates
+(`SegmentationPipeline`, `MarketMixPipeline`), same knowledge module, same
+synthetic data generators -- written in idiomatic R6.
+
+```r
+devtools::install_github("jamesyoung93/AI2Analytics",
+                         subdir = "r-pkg/ai2analytics")
+```
+
+See [`docs/R_PORT_REPORT.md`](docs/R_PORT_REPORT.md) and
+[`docs/PARITY_REPORT.md`](docs/PARITY_REPORT.md) for what's covered and
+how the two implementations agree numerically.
+
+## Demos & Notebooks
+
+Five notebooks under `demos/notebooks/` work in Colab, Jupyter, or VS Code
+out of the box (each starts with a self-installing setup cell):
+
+| Notebook | What it shows |
+|---|---|
+| `00_quickstart.ipynb` | 5-cell hello world: synthetic data → segment → plot |
+| `01_one_template_three_regions.ipynb` | Same `SegmentationPipeline` across US, EU, BRIC schemas |
+| `02_market_mix_budget_reallocation.ipynb` | Fit MMM, then simulate budget reallocations using only quantities the pipeline returns |
+| `03_call_optimizer_endtoend.ipynb` | Full `DetailOptimizationPipeline` with allocation-by-territory and decile-uplift charts |
+| `04_knowledge_accumulates.ipynb` | Multi-quarter rollout simulation; retriever output for new analysts |
+
+Synthetic data is bundled in the package:
+
+```python
+from ai2analytics.datasets import us_hcp, eu_account, bric
+tables = us_hcp.generate_all()  # no PII, deterministic with seed
 ```
 
 ## Quick Start

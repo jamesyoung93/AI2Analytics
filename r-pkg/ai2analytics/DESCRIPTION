@@ -1,0 +1,40 @@
+Package: ai2analytics
+Type: Package
+Title: Reusable Analytics Framework with Configurable Pipeline Templates
+Version: 0.2.1
+Authors@R: person("AI2Analytics", "Contributors", email = "noreply@example.com",
+                   role = c("aut", "cre"))
+Description: Native R port of the AI2Analytics Python framework. Provides
+    reusable pipeline templates for entity segmentation and market mix
+    modelling, plus a JSONL-backed knowledge store for accumulating
+    decisions across runs. Each pipeline separates logic from data shape
+    so the same template handles many similar datasets via configuration.
+    The included demos use pharmaceutical promotional data because that
+    is the author's domain, but the primitives are transportable across
+    consumer goods, software, retail, financial services, and any other
+    setting with panel-structured response data.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 4.1.0)
+Imports:
+    R6,
+    cluster,
+    dplyr (>= 1.0.0),
+    glmnet,
+    jsonlite,
+    rlang,
+    stats,
+    tibble,
+    utils
+Suggests:
+    ggplot2,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    tidyr,
+    withr
+RoxygenNote: 7.3.1
+Config/testthat/edition: 3
+VignetteBuilder: knitr
