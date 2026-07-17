@@ -4,7 +4,7 @@ AI-powered framework for scaling analytical pipelines across brands, regions, an
 
 ## The Problem
 
-You have a validated analytical pipeline — say, a call allocation optimizer or a propensity scoring engine. It works for one brand. Now you need to run it for five more, each with slightly different data schemas, column names, therapeutic class variables, and reference files.
+You have a validated analytical pipeline, such as a call allocation optimizer or a propensity scoring engine. It works for one brand. Now you need to run it for five more, each with slightly different data schemas, column names, therapeutic class variables, and reference files.
 
 Manually copying and editing a 1,500-line notebook for each brand is slow, error-prone, and impossible to maintain.
 
@@ -15,7 +15,7 @@ AI2Analytics separates **what the pipeline does** from **what the data looks lik
 1. **Templates** define pipeline logic as modular, reusable stages with declared data requirements
 2. **Discovery** surveys your data catalog, profiles tables, and matches them to template requirements
 3. **Conversation** uses an LLM to map discovered data to config fields, auto-filling what it can and asking structured questions about what it can't
-4. **Adapters** generate and execute preprocessing code when source data doesn't match the template schema — with automatic retry and LLM-assisted error correction
+4. **Adapters** generate and execute preprocessing code when source data doesn't match the template schema, with automatic retry and LLM-assisted error correction
 5. **Execution** runs the configured pipeline end-to-end
 
 ## Installation
@@ -63,7 +63,7 @@ results = pipeline.run(cfg, spark=spark)
 
 ### AI-assisted usage (new brand, unfamiliar data)
 
-This is the primary workflow. The AI surveys your data, maps it to the template's requirements, asks about anything it can't resolve, and handles data transformation — all using exact config field names so the pipeline runs without manual wiring.
+This is the primary workflow. The AI surveys your data, maps it to the template's requirements, asks about anything it can't resolve, and handles data transformation. It uses exact config field names so the pipeline runs without manual wiring.
 
 ```python
 from ai2analytics import AnalyticsSession
@@ -156,7 +156,7 @@ session.show_questions() # what's answered vs. still needed
 
 #### Step 3: Generate and run adapter code (if needed)
 
-If the source data doesn't exactly match what the pipeline expects — say, column names differ, types need casting, or a reference file needs restructuring — the LLM generates transformation code:
+If the source data doesn't exactly match what the pipeline expects, such as when column names differ, types need casting, or a reference file needs restructuring, the LLM generates transformation code:
 
 ```python
 session.generate_adapter()
@@ -243,7 +243,7 @@ Deep Profile: commercial_data.physician_weekly
   Stagnant columns (no time variation): SPECIALTY, REGION
 ```
 
-This tells you whether the data is a time series, what the grain is, whether there are gaps, which columns change over time vs. static per entity, and how many categories exist — all of which inform whether adapter code is needed.
+This tells you whether the data is a time series, what the grain is, whether there are gaps, which columns change over time versus remaining static per entity, and how many categories exist. These details inform whether adapter code is needed.
 
 ## How the Config Mapping Works
 
@@ -287,7 +287,7 @@ This gives the LLM the complete chain: "I see a table `commercial_data.physician
 
 ```
 ai2analytics/
-├── session.py               # Main orchestrator — discover, configure, adapt, run
+├── session.py               # Main orchestrator: discover, configure, adapt, run
 ├── llm.py                   # LLM client (Databricks Model Serving / OpenAI-compatible)
 ├── utils.py                 # Shared data utilities (clean_npi, yn_flag, etc.)
 ├── discovery/
@@ -330,7 +330,7 @@ All column names, file paths, model parameters, and optimizer constraints are co
 
 ```python
 cfg = DetailOptimizationConfig(
-    # Column mappings — set these to match YOUR data
+    # Column mappings: set these to match YOUR data
     col_npi="PHYSICIAN_NPI",
     col_week="WEEK_DATE",
     col_referrals="REFERRAL_COUNT",
@@ -420,7 +420,7 @@ The discovery layer will automatically:
 | `discover(schemas, prompt)` | Scan tables, match template, auto-fill config, generate questions |
 | `show_questions()` | Display what's been auto-detected vs. what still needs answers |
 | `show_config()` | Show all current config field values |
-| `answer({field: value})` | Provide answers — accepts any config field name |
+| `answer({field: value})` | Provide answers; accepts any config field name |
 | `profile_table(name)` | Deep-profile a specific table (time series, completeness, types) |
 | `generate_adapter()` | LLM generates preprocessing code for data mismatches |
 | `set_adapter_code(code)` | Manually set or edit the adapter code |
